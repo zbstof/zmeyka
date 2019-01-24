@@ -330,7 +330,7 @@
     const cellsPerSecond = 4;
 
     const snakeIsAlive = window.setInterval(
-        coordinator.tick,
+        tick,
         1000 / cellsPerSecond);
     const coordinator = new Coordinator(
         new Algorithm(numberOfLines, numberOfCellsPerLine, snakeLength),
@@ -338,6 +338,10 @@
         function () {
             clearInterval(snakeIsAlive)
         });
+
+    function tick() {
+        coordinator.tick()
+    }
 
     window.addEventListener("keydown", function (e) {
         coordinator.handleKeypress(e.keyCode)
