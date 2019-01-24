@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<!--suppress ALL -->
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Snake</title>
+    <style>
+        .food {
+            background: red;
+        }
+
+        .snakeBody {
+            background: white;
+        }
+
+        .deadSnakeBody {
+            background: yellow;
+        }
+
+        tr {
+            margin-bottom: 0;
+            padding: 0;
+        }
+
+        table {
+            border: 1px solid black;
+            border-spacing: 0;
+            background: black;
+        }
+
+        @media screen and (min-width: 280px) and (max-width: 480px) {
+            td {
+                width: 5px;
+                height: 5px;
+                margin: 0;
+                padding: 0;
+
+            }
+        }
+
+        @media screen and (min-width: 480px) and (max-width: 600px) {
+            td {
+                width: 8px;
+                height: 8px;
+                margin: 0;
+                padding: 0;
+
+            }
+        }
+
+        @media screen and (min-width: 600px) and (max-width: 800px) {
+            td {
+                width: 10px;
+                height: 10px;
+                margin: 0;
+                padding: 0;
+            }
+        }
+
+        @media screen and (min-width: 800px) and (max-width: 1000px) {
+            td {
+                width: 24px;
+                height: 24px;
+                margin: 0;
+                padding: 0;
+            }
+        }
+
+        @media screen and (min-width: 1000px) {
+            td {
+                width: 28px;
+                height: 28px;
+                margin: 0;
+                padding: 0;
+            }
+
+        }
+
+    </style>
+
+</head>
+<body>
+
+<script>
+    class Field {
+        // bodyPosition
+        // foodPosition;
+
+        constructor(fieldLines, fieldCells) {
+            this.bodyPosition = [];
+
+            const table = document.createElement("table");
+            document.body.appendChild(table);
+
+            for (let fieldLength = 0; fieldLength < fieldLines; fieldLength++) {
+                let line = document.createElement("tr");
+                table.appendChild(line);
+
+                for (let fieldWidth = 0; fieldWidth < fieldCells; fieldWidth++) {
+                    let cells = document.createElement("td");
+                    line.appendChild(cells);
+                }
+            }
+        }
+
+        getCell(coordinates) {
+            let allLinesOnField = document.querySelectorAll("tr");
+            return allLinesOnField[coordinates.y].childNodes[coordinates.x];
+        }
+
+        repaintSnake(position) {
+            this.removeSnake();
+            this.bodyPosition = position.slice(0);
+            for (let positionIndex = 0; positionIndex < this.bodyPosition.length; positionIndex++) {
+                this.getCell(this.bodyPosition[positionIndex]).classList.add("snakeBody");
+            }
+        }
+
+        paintDeadSnake() {
+            this.removeSnake();
+            for (let positionIndex = 0; positionIndex < this.bodyPosition.length; positionIndex++) {
+                this.getCell(this.bodyPosition[positionIndex]).classList.add("deadSnakeBody");
+            }
+        }
+
+        removeSnake() {
+            for (let positionIndex = 0; positionIndex < this.bodyPosition.length; positionIndex++) {
+                this.getCell(this.bodyPosition[positionIndex]).classList.remove("snakeBody");
+            }
+        }
+
+        addFood(foodPosition) {
+            // TODO: check food is not present
+            this.foodPosition = foodPosition;
+            this.getCell(foodPosition).classList.add("food");
+        }
+
+        removeFood() {
+            // TODO: check food is present
+            this.getCell(this.foodPosition).classList.remove("food");
+            this.foodPosition = undefined;
+        }
+    }
+
+    class Algorithm {
+        // numberOfCellsPerLine;
+        // numberOfLines;
+        // previousMovementDirection;
+        // historyOfPotentialMovementDirections;
+        // _bodyPosition;
+        // _foodPosition;
+
+        constructor(fieldLines, fieldCells, snakeLength) {
+            this.right = {x: 1, y: 0};
+            this.left = {x: -1, y: 0};
+            this.up = {x: 0, y: -1};
+            this.down = {x: 0, y: 1};
+            this.numberOfCellsPerLine = fieldCells;
+            this.numberOfLines = fieldLines;
+            this.previousMovementDirection = this.left;
+            this.historyOfPotentialMovementDirections = [];
+            this._bodyPosition = this.buildSnakeBody(snakeLength);
+            this._foodPosition = this.generateFood(this._bodyPosition)
+        }
+
+
+        get bodyPosition() {
+            return this._bodyPosition.slice(0)
+        }
+
+        get foodPosition() {
+            return this._foodPosition
+        }
+
+        noFood() {
+            return this._foodPosition === undefined
+        }
+
+        generateFood() {
+            let foodPosition;
+            let suitableNumber = false;
+            while (suitableNumber === false) {
+                suitableNumber = true;
+                foodPosition = {
+                    x: (Math.floor(Math.random() * this.numberOfCellsPerLine)),
+                    y: (Math.floor(Math.random() * this.numberOfLines))
+                };
+                for (let positionIndex = 0; positionIndex < this._bodyPosition.length; positionIndex++) {
+                    if (this.isSameCoordinates(this._bodyPosition[positionIndex], foodPosition)) {
+                        suitableNumber = false;
+                    }
+                }
+            }
+            this._foodPosition = foodPosition;
+            return foodPosition;
+        }
+
+        buildSnakeBody(requiredBodyLength) {
+            // initialize head in the middle of the field
+            let initialHeadPosition = {x: this.numberOfCellsPerLine / 2, y: this.numberOfLines / 2};
+            let snakePosition = [initialHeadPosition];
+            for (let currentTailOffset = 1; currentTailOffset < requiredBodyLength; currentTailOffset++) {
+                let headCopy = Object.assign({}, initialHeadPosition);
+                headCopy.x = headCopy.x + currentTailOffset;
+                snakePosition.push(headCopy);
+            }
+            return snakePosition;
+        }
+
+        checkSnakeDeath() {
+            let snakeHead = this._bodyPosition[0];
+            if (snakeHead.y < 0 || snakeHead.y >= this.numberOfLines || snakeHead.x < 0 || snakeHead.x >= this.numberOfCellsPerLine) {
+                return true;
+            }
+            // you cannot hit element number 0, 1, 2, 3:
+            // xx
+            // xx
+            for (let bodyElementIndex = 4; bodyElementIndex < this._bodyPosition.length; bodyElementIndex++) {
+                if (this.isSameCoordinates(snakeHead, this._bodyPosition[bodyElementIndex])) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        moveSnakeBody() {
+            const movementDirection = this.nextDirection();
+            let newPosition = this._bodyPosition.slice(0, -1);
+            let currentHead = newPosition[0];
+            let newHead = {x: currentHead.x + movementDirection.x, y: currentHead.y + movementDirection.y};
+            newPosition.unshift(newHead);
+            this._bodyPosition = newPosition;
+            return newPosition;
+        }
+
+        isSameCoordinates(firstCoordinate, secondCoordinate) {
+            return firstCoordinate.x === secondCoordinate.x && firstCoordinate.y === secondCoordinate.y;
+        }
+
+        eatFood() {
+            // TODO: check food position is defined
+            let doesEatFood = this.isSameCoordinates(this._bodyPosition[0], this._foodPosition);
+            if (doesEatFood) {
+                // this will be removed in the next tick instead of current tail, but has to be valid body tile so that getCell in removeSnakeFromField doesn't fail
+                this._bodyPosition.push(this._bodyPosition[0]);
+                this._foodPosition = undefined;
+            }
+            return doesEatFood
+        }
+
+        nextDirection() {
+            for (let i = this.historyOfPotentialMovementDirections.length - 1; i >= 0; i--) {
+                if (!this.isSameCoordinates(this.historyOfPotentialMovementDirections[i], this.invertDirection(this.previousMovementDirection))) {
+                    this.previousMovementDirection = this.historyOfPotentialMovementDirections[i];
+                    return this.historyOfPotentialMovementDirections[i];
+                }
+            }
+            this.historyOfPotentialMovementDirections = [];
+            return this.previousMovementDirection;
+        }
+
+        invertDirection(direction) {
+            return {x: -direction.x, y: -direction.y};
+        }
+
+        addMovement(movement) {
+            this.historyOfPotentialMovementDirections.push(movement)
+        }
+    }
+
+    class Coordinator {
+        // field;
+        // algo;
+        constructor(algo, field, tickStopCallback) {
+            this.algo = algo;
+            this.field = field;
+            this.stopCallback = tickStopCallback;
+            this.field.repaintSnake(this.algo.bodyPosition);
+            this.field.addFood(this.algo.foodPosition);
+
+            // constants
+            this.keyCodeRightButton = 39;
+            this.keyCodeLeftButton = 37;
+            this.keyCodeUpButton = 38;
+            this.keyCodeDownButton = 40;
+        }
+
+        tick() {
+            const bodyPosition = this.algo.moveSnakeBody();
+            if (this.algo.checkSnakeDeath()) {
+                this.stopCallback();
+                this.field.paintDeadSnake();
+                return;
+            }
+            if (this.algo.noFood()) {
+                const foodPosition = this.algo.generateFood();
+                this.field.addFood(foodPosition);
+            }
+            this.field.repaintSnake(bodyPosition);
+            if (this.algo.eatFood()) {
+                this.field.removeFood();
+            }
+        }
+
+        handleKeypress(keyCode) {
+            let movement;
+            switch (keyCode) {
+                case this.keyCodeRightButton:
+                    movement = this.algo.right;
+                    break;
+                case this.keyCodeLeftButton:
+                    movement = this.algo.left;
+                    break;
+                case this.keyCodeUpButton:
+                    movement = this.algo.up;
+                    break;
+                case this.keyCodeDownButton:
+                    movement = this.algo.down;
+                    break;
+                default:
+                    return;
+            }
+            this.algo.addMovement(movement);
+        }
+    }
+
+    const numberOfLines = 8;
+    const numberOfCellsPerLine = 16;
+    const snakeLength = 2;
+    const cellsPerSecond = 4;
+
+    const snakeIsAlive = window.setInterval(
+        coordinator.tick,
+        1000 / cellsPerSecond);
+    const coordinator = new Coordinator(
+        new Algorithm(numberOfLines, numberOfCellsPerLine, snakeLength),
+        new Field(numberOfLines, numberOfCellsPerLine),
+        function () {
+            clearInterval(snakeIsAlive)
+        });
+
+    window.addEventListener("keydown", function (e) {
+        coordinator.handleKeypress(e.keyCode)
+    });
+
+</script>
+</body>
+</html>
